@@ -1,0 +1,8 @@
+# dsh-stable-mobile bundle layer.
+#
+# Inserts the stable-mobile host plugin row. All user-facing configuration lives
+# in `$DSH_HOME/stable-mobile.json` and is edited from the 手机访问 settings page,
+# so this row stays minimal and carries no machine-specific values.
+- insert:
+    - id: stable-mobile
+      name: dsh-stable-mobile

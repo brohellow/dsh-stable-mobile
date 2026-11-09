@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Phone Access",
+    "description": "A fixed URL plus a fixed access password: open it on your phone to watch this machine live. Session injection keeps browsers that drop cookies on the WebSocket handshake (MiuiBrowser and friends) working."
+  }
+}

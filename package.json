@@ -1,0 +1,49 @@
+{
+  "name": "dsh-stable-mobile",
+  "version": "1.0.0",
+  "description": "Stable mobile access for DeepSeek Harness: a fixed public URL plus a fixed access password, with automatic session re-injection for browsers whose WebSocket handshake drops cookies (MiuiBrowser, WeChat, etc.). Works behind your own VPS via nginx TLS + a supervised SSH reverse tunnel.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "deepseek",
+    "harness",
+    "dsh",
+    "dsh-plugin",
+    "mobile",
+    "remote",
+    "tunnel",
+    "websocket"
+  ],
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/**/*.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "README.zh.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    },
+    "engines": {
+      "dsh": ">=0.2.0-rc.2"
+    }
+  }
+}
