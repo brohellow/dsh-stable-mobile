@@ -1,11 +1,19 @@
 @echo off
 rem ============================================================
-rem dsh-stable-mobile 安装脚本（Windows）
+rem dsh-stable-mobile 安装器（Windows，适用于桌面版 DeepSeek Harness）
 rem
-rem 把本插件链接进当前 DSH profile 的 node_modules，并在
-rem profile 的 cordis.patch.yml 里登记 bundle。不需要 npm 联网安装。
+rem 为什么不能只跑 `dsh plugin add`：
+rem  1) 桌面版（Electron）的 desktop profile 被应用独占管理，
+rem     命令行 `dsh --profile desktop ...` 会直接报错：
+rem       "profile desktop is managed exclusively by the Electron application"
+rem  2) `dsh plugin add` 只装依赖，不会把包名写入 dsh.profile.bundles，
+rem     而只有 bundles 里的包才会被加载 —— 表现为「装了但设置里没有」。
+rem  3) 用 PowerShell 写 package.json 容易带入 UTF-8 BOM，
+rem     DSH 解析会报 "Unexpected token ''"，插件完全加载不了。
 rem
-rem 用法：在本文件夹里双击运行即可。
+rem 本脚本用 Node 直接改文件，保证：无 BOM、只追加 bundles、不动其他配置。
+rem
+rem 用法：双击运行。
 rem ============================================================
 setlocal EnableDelayedExpansion
 chcp 65001 >nul
@@ -13,17 +21,38 @@ chcp 65001 >nul
 set "HERE=%~dp0"
 if "%HERE:~-1%"=="\" set "HERE=%HERE:~0,-1%"
 
-if "%DSH_HOME%"=="" (
-  set "DSH_HOME=%USERPROFILE%\.dsh"
-)
+if "%DSH_HOME%"=="" set "DSH_HOME=%USERPROFILE%\.dsh"
 
 echo.
-echo   dsh-stable-mobile 安装
-echo   ----------------------
+echo   dsh-stable-mobile 安装器
+echo   ========================
+echo   源目录   = %HERE%
 echo   DSH_HOME = %DSH_HOME%
-echo.
 
-rem ---- 找到 profile（默认 desktop）-------------------------------------
+rem ---------- 找 node ------------------------------------------------
+set "NODE="
+for /f "delims=" %%P in ('where node 2^>nul') do (
+  if "!NODE!"=="" set "NODE=%%P"
+)
+if "%NODE%"=="" (
+  for %%R in (
+    "%ProgramFiles%\nodejs\node.exe"
+    "%LOCALAPPDATA%\Programs\nodejs\node.exe"
+    "%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\primary-runtime\dependencies\node\bin\node.exe"
+  ) do (
+    if "!NODE!"=="" if exist "%%~R" set "NODE=%%~R"
+  )
+)
+if "%NODE%"=="" (
+  echo.
+  echo [错误] 找不到 Node.js。
+  echo        请安装 Node.js ^(^>=20^)，或把它加进 PATH 后重跑。
+  pause
+  exit /b 1
+)
+echo   node     = %NODE%
+
+rem ---------- 选 profile ---------------------------------------------
 set "PROFILE=%DSH_PROFILE%"
 if "%PROFILE%"=="" (
   if exist "%DSH_HOME%\profiles\desktop" (
@@ -34,84 +63,33 @@ if "%PROFILE%"=="" (
     )
   )
 )
-if "%PROFILE%"=="" goto noprofile
-
+if "%PROFILE%"=="" (
+  echo [错误] 找不到 profile，请先运行过一次 DeepSeek Harness。
+  pause
+  exit /b 1
+)
 set "PROFILE_DIR=%DSH_HOME%\profiles\%PROFILE%"
-if not exist "%PROFILE_DIR%" goto noprofile
-
+if not exist "%PROFILE_DIR%" (
+  echo [错误] profile 目录不存在: %PROFILE_DIR%
+  pause
+  exit /b 1
+)
 echo   profile  = %PROFILE%
-echo   目标目录 = %PROFILE_DIR%
 echo.
 
-rem ---- 1. 链接到 profile/node_modules ---------------------------------
-set "NM=%PROFILE_DIR%\node_modules"
-if not exist "%NM%" mkdir "%NM%"
-
-set "LINK=%NM%\dsh-stable-mobile"
-if exist "%LINK%" (
-  echo [1/3] 移除已有的链接/目录...
-  rmdir "%LINK%" 2>nul
-  if exist "%LINK%" (
-    echo       [错误] 无法删除 %LINK%
-    goto fail
-  )
-)
-echo [1/3] 链接插件到 profile...
-mklink /J "%LINK%" "%HERE%" >nul
+rem ---------- 调用 Node 安装器 ----------------------------------------
+"%NODE%" "%HERE%\scripts\install.mjs" --here "%HERE%" --profile-dir "%PROFILE_DIR%"
 if errorlevel 1 (
-  echo       [提示] 目录链接失败，尝试直接复制...
-  xcopy "%HERE%" "%LINK%\" /E /I /Y /Q >nul
-  if errorlevel 1 goto fail
-)
-echo       完成: %LINK%
-
-rem ---- 2. 在 cordis.patch.yml 登记 bundle -----------------------------
-set "PATCH=%PROFILE_DIR%\cordis.patch.yml"
-echo [2/3] 登记到 cordis.patch.yml...
-if not exist "%PATCH%" (
-  echo # Your patch layer for this dsh profile.> "%PATCH%"
-)
-findstr /C:"dsh-stable-mobile" "%PATCH%" >nul 2>&1
-if not errorlevel 1 (
-  echo       已存在，跳过
-) else (
-  echo - id: stable-mobile>> "%PATCH%"
-  echo   name: dsh-stable-mobile>> "%PATCH%"
-  echo       已追加
+  echo.
+  echo [失败] 安装未完成，请查看上面的错误。
+  pause
+  exit /b 1
 )
 
-rem ---- 3. 校验 package.json -------------------------------------------
-echo [3/3] 校验插件文件...
-if not exist "%HERE%\package.json" goto fail
-if not exist "%HERE%\index.js" goto fail
-if not exist "%HERE%\cordis.patch.yml" goto fail
-if not exist "%HERE%\client.js" goto fail
-echo       文件齐全
-
-echo.
-echo   安装完成！
 echo.
 echo   下一步：
-echo     1. 重启 DeepSeek Harness
+echo     1. 完全退出 DeepSeek Harness 再重新打开
 echo     2. 打开 设置 - 手机访问
-echo     3. 展开「高级设置」，填入服务器地址、公网地址、SSH 私钥路径
-echo     4. 点「开启」
-echo.
-echo   服务器一侧需要先配好 nginx TLS 反代，详见 README.md
 echo.
 pause
 exit /b 0
-
-:noprofile
-echo [错误] 找不到 DSH profile 目录：%DSH_HOME%\profiles
-echo        请确认 DeepSeek Harness 已经运行过至少一次。
-echo.
-pause
-exit /b 1
-
-:fail
-echo.
-echo [错误] 安装失败，请检查上面的提示。
-echo.
-pause
-exit /b 1
