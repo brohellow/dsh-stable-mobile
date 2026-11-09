@@ -1,0 +1,30 @@
+name: test
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gateway-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax check
+        run: |
+          for f in index.js client.js lib/gateway.js lib/tunnel.js lib/routes.js lib/state.js; do
+            node --check "$f"
+          done
+
+      - name: JSON validity
+        run: |
+          node -e "for (const f of ['package.json','locale/zh.json','locale/en.json']) JSON.parse(require('fs').readFileSync(f,'utf8'))"
+
+      - name: Gateway integration tests
+        run: node test/gateway.test.mjs

@@ -2,7 +2,7 @@
 
 把本机 DSH Web GUI 通过**你自己的服务器**带到手机上，用一个**固定网址 + 固定访问密码**长期访问。
 
-和扫码类方案的区别：**不用每次重新扫码**，网址和密码都不变；DSP 重启、插件升级都不会让手机掉线。
+和扫码类方案的区别：**不用每次重新扫码**，网址和密码都不变；DSH 重启、插件升级都不会让手机掉线。
 
 ## 为什么需要这个
 
@@ -15,12 +15,15 @@
 
 ## 安装
 
+直接从 GitHub 安装（推荐）：
+
 ```bash
-# 在你的 DSH profile 目录下
-dsh plugin install dsh-stable-mobile
+dsh plugin install github:brohellow/dsh-stable-mobile
 ```
 
-或从本仓库 zip 安装后，在「设置 → 插件」里启用。
+或下载 zip 解压后双击 `install-windows.cmd`（Windows）。
+
+装好后重启 DeepSeek Harness，在「设置 → 手机访问」里配置。
 
 ## 使用（3 步）
 
